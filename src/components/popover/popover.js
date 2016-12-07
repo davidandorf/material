@@ -239,10 +239,12 @@ MdPopoverService.prototype.create = function(scope, element, attrs) {
   var popoverRef = new MdPopoverRef(this._scope, this._element, this._attrs,
       this._isTooltip, this._parentElement, this._positions, this._$injector);
 
-  popoverRef
-      .updatePosition()
-      ._bindEvents()
-      ._configureWatchers();
+  if (this._scope.mdEnabled) {
+    popoverRef
+        .updatePosition()
+        ._bindEvents()
+        ._configureWatchers();
+  }
 
   return popoverRef;
 };
@@ -525,6 +527,10 @@ MdPopoverRef.prototype._bindEvents = function() {
     // open.
     parentElementCloseTriggerEventHandler();
     attributeObserver && attributeObserver.disconnect();
+
+    // Destroy the scope.
+    self.scope.$destroy();
+    self.scope = undefined;
   }
 
   /**
@@ -648,6 +654,7 @@ MdPopoverRef.prototype._configureWatchers = function() {
    */
   function onElementDestroy() {
     self.scope.$destroy();
+    self.scope = undefined;
   };
 
   /**
