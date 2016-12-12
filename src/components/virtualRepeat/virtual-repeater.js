@@ -91,7 +91,7 @@ function virtualRepeatContainerTemplate($element) {
  * very quickly in Safari, but comes with a higher rendering and dirty-checking cost.
  * @const {number}
  */
-var NUM_EXTRA = 3;
+var NUM_EXTRA = 9;
 
 /** @ngInject */
 function VirtualRepeatContainerController($$rAF, $mdUtil, $mdConstant, $parse, $rootScope, $window, $scope,
@@ -930,17 +930,65 @@ VirtualRepeatController.prototype.domFragmentFromBlocks_ = function(blocks) {
  * @private
  */
 VirtualRepeatController.prototype.updateIndexes_ = function() {
-  var itemsLength = this.items ? this.items.length : 0;
-  var containerLength = Math.ceil(this.container.getSize() / this.itemSize);
+  var itemsLength = this.items ? this.items.length : 0; // total count of items
+  var containerLength = this.recordsInView() // container height / item height
+  //container height is items which should be holded in view
 
-  this.newStartIndex = Math.max(0, Math.min(
-      itemsLength - containerLength,
-      Math.floor(this.container.getScrollOffset() / this.itemSize)));
+  this.newStartIndex = this.getStartIndex();
   this.newVisibleEnd = this.newStartIndex + containerLength + NUM_EXTRA;
   this.newEndIndex = Math.min(itemsLength, this.newVisibleEnd);
   this.newStartIndex = Math.max(0, this.newStartIndex - NUM_EXTRA);
 };
 
+VirtualRepeatController.prototype.recordsInView = function(){
+
+  //logic here is to sort items by height and keep looping over them and keep sum of heights in var
+  var itemsLength = this.items ? this.items.length : 0;
+  var containerLength = Math.ceil(this.container.getSize() / this.itemSize);
+  //
+  var viewSize = this.container.size;
+  var sum = 0;
+  var maxRecordsToShow = Math.max(0, Math.min(itemsLength - containerLength, Math.floor(this.container.getScrollOffset() / this.itemSize)));
+  if(this.items.length > 0){
+    if(typeof this.items[0].height != 'undefined'){
+      var cacheItems = angular.copy(this.items);
+      //suppose if they are already sorted by height then
+      cacheItems.some(function(v,k){
+        sum += v.height;
+        if(sum > viewSize){
+          maxRecordsToShow = k;
+          return true;
+        }
+      });
+    }
+  }
+
+
+  return maxRecordsToShow;
+}
+
+VirtualRepeatController.prototype.getStartIndex = function(){
+  var itemsLength = this.items ? this.items.length : 0; // total count of items
+  var heightAlreadyScrolled = this.container.getScrollOffset();
+  var nextStartIndex = itemsLength - this.recordsInView();
+  var sum = 0;
+  if(this.items.length > 0){
+    if(typeof this.items[0].height != 'undefined'){
+      var cacheItems = angular.copy(this.items);
+
+      cacheItems.some(function(v,k){
+        sum += v.height;
+        if(sum >= heightAlreadyScrolled){
+          nextStartIndex = k;
+          return true;
+        }
+      });
+
+    }
+  }
+
+  return nextStartIndex;
+}
 /**
  * This VirtualRepeatModelArrayLike class enforces the interface requirements
  * for infinite scrolling within a mdVirtualRepeatContainer. An object with this
